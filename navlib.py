@@ -15,6 +15,7 @@ import sys
 import pexpect
 
 
+# pylint: disable=R0913
 def nav_register(passwd, kts, port, auth, orgname, clientname, logfile=sys.stdout):
     """ Register navencrypt host with the Key Trustee Server. Suports single passphrase only.
         passwd - Navencrypt password to set
@@ -78,7 +79,9 @@ def nav_prepare_loop(passwd, lfile, device, directory, logfile=sys.stdout):
 
     child.close()
 
-    # Relying on navencrypt-prepare exit status to indicate success
+    # Relying on navencrypt-prepare exit status to indicate success.
+    # Doing this because this command does a lot of setup and need to
+    # ensure all the prep succeeds.
     # Check logs if this succeeds but things don't seem right
     return child.exitstatus == 0
 
@@ -110,11 +113,36 @@ def nav_encrypt(passwd, category, directory, mount, logfile=sys.stdout):
     return index == 0
 
 
+def nav_acl_add(passwd, rule, logfile=sys.stdout):
+    """ Sets an ACL rule for the navencrypt mounted directory
+        passwd - Navencrypt password
+        rule - The ACL rule to set (see documentation for valid rules
+        logfile - print pexpect output to logfile
+    """
+    cmd = 'navencrypt acl --add --rule="%s"' % rule
+
+    child = pexpect.spawn(cmd)
+    child.logfile_read = logfile
+
+    opts = ['Type MASTER passphrase:', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0:
+        child.sendline(passwd)
+    else:
+        return False
+
+    # pylint: disable=W1401
+    opts = ['1 rule\(s\) were added', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    return index == 0
+
+
 if __name__ == "__main__":
     # Testing functions
-
-    if nav_encrypt('thisisatestpassword', '@docker1-mount',
-                   '/dmcrypt/lib/docker1', '/docker1-mount'):
-        print "nav_encrypt succeeded"
+    RULE = 'ALLOW @docker1-mount * /usr/bin/ls'
+    if nav_acl_add('thisisatestpassword', RULE):
+        print "nav_acl succeeded"
     else:
-        print "nav_encrypt failed"
+        print "nav_acl failed"
