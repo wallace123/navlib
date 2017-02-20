@@ -23,10 +23,11 @@ def nav_register(passwd, kts, port, auth, orgname, clientname, logfile=sys.stdou
         auth - Auth Secret on the Key Trustee Server
         orgname - Organization Name set on the Key Trustee Server
         clientname - Name for this Navencrypt client node
-        logfile - print output to logfile
+        logfile - print pexpect output to logfile
     """
     cmd = 'navencrypt register --server=%s:%s --org=%s --auth=%s --clientname=%s '\
           '--skip-ssl-check' % (kts, port, orgname, auth, clientname)
+
     child = pexpect.spawn(cmd)
     child.logfile_read = logfile
 
@@ -57,7 +58,7 @@ def nav_prepare_loop(passwd, lfile, device, directory, logfile=sys.stdout):
         lfile - File to use for loop device
         device - loop device (i.e. /dev/loop0
         directory - Encrypted directory mount point
-        logfile - print output to logfile
+        logfile - print pexpect output to logfile
     """
     cmd = 'navencrypt-prepare -d %s %s %s' % (lfile, device, directory)
 
@@ -82,11 +83,38 @@ def nav_prepare_loop(passwd, lfile, device, directory, logfile=sys.stdout):
     return child.exitstatus == 0
 
 
+def nav_encrypt(passwd, category, directory, mount, logfile=sys.stdout):
+    """ Move directory to navencrypt encrypted mount point
+        passwd - Navencrypt password
+        category - Name where to copy files within navencrypt mounted directories
+        directory - directory to encrypt
+        mount - navencrypt mounted directory
+        logfile - print pexpect output to logfile
+    """
+    cmd = 'navencrypt-move encrypt %s %s %s' % (category, directory, mount)
+
+    child = pexpect.spawn(cmd)
+    child.logfile_read = logfile
+
+    opts = ['Type MASTER passphrase:', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0:
+        child.sendline(passwd)
+    else:
+        return False
+
+    opts = ['Done.', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    return index == 0
+
+
 if __name__ == "__main__":
     # Testing functions
 
-    if nav_prepare_loop('thisisatestpassword', '/dmcrypt/docker1-loop',
-                        '/dev/loop0', '/docker1-mount'):
-        print "nav_prepare_loop succeeded"
+    if nav_encrypt('thisisatestpassword', '@docker1-mount',
+                   '/dmcrypt/lib/docker1', '/docker1-mount'):
+        print "nav_encrypt succeeded"
     else:
-        print "nav_prepare_loop failed"
+        print "nav_encrypt failed"
