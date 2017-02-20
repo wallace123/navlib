@@ -1,4 +1,5 @@
 """ Wrapper functions around navencrypt 3.10.1 commands """
+import sys
 import pexpect
 
 
@@ -34,6 +35,42 @@ def nav_register(passwd, kts, port, auth, orgname, clientname):
         return False
 
 
+def nav_prepare_loop(passwd, lfile, device, directory, logfile=sys.stdout):
+    """ Prepares the encrypted volume backed by a loop device
+        passwd - Navencrypt password
+        lfile - File to use for loop device
+        device - loop device (i.e. /dev/loop0
+        directory - Encrypted directory mount point
+        logfile - print output to logfile
+    """
+    cmd = 'navencrypt-prepare -d %s %s %s' % (lfile, device, directory)
+
+    child = pexpect.spawn(cmd)
+    child.logfile_read = logfile
+
+    opts = ['Type MASTER passphrase', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0:
+        child.sendline(passwd)
+    else:
+        print 'ERROR'
+        return False
+
+    opts = [pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    child.close()
+
+    # Relying on navencrypt-prepare exit status to indicate success
+    # Check logs if this succeeds but things don't seem right
+    return child.exitstatus == 0
+
+
 if __name__ == "__main__":
     # Testing functions
-    
+    if nav_prepare_loop('thisisatestpassword', '/dmcrypt/docker1-loop',
+                        '/dev/loop0', '/docker1-mount'):
+        print "nav_prepare_loop succeeded"
+    else:
+        print "nav_prepare_loop failed"
