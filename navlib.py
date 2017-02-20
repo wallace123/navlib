@@ -203,6 +203,31 @@ def nav_acl_del(passwd, rule, logfile=sys.stdout):
         return False
 
 
+def nav_set_mode(passwd, mode, logfile=sys.stdout):
+    """ Sets the mode (permissive or enforcing) for navencrypt
+        passwd - Navencrypt password
+        mode - enforcing or permissive
+        logfile - print pexpect output to logfile
+    """
+    cmd = 'navencrypt set --mode=%s' % mode
+
+    child = pexpect.spawn(cmd)
+    child.logfile_read = logfile
+
+    opts = ['Type MASTER passphrase:', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0:
+        child.sendline(passwd)
+    else:
+        return False
+
+    opts = ['%s mode set' % mode, pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    return index == 0
+
+
 if __name__ == "__main__":
     # Testing functions
     pass
