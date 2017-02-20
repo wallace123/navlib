@@ -1,9 +1,21 @@
-""" Wrapper functions around navencrypt 3.10.1 commands """
+""" Wrapper functions around navencrypt 3.10.1 commands. Uses pexpect to handle entering
+of navencrypt admin password (only supports single-passphrase at the moment).
+
+Tips with pexpect:
+  - End of line is \r\n for terminals
+  - Two pexpect exceptions are EOF and TIMEOUT. Add to expect opts list if you want
+    to avoid try/except blocks for code size saving.
+  - You can just expect EOF if you want to wait for all output of a child to finish.
+    All output will be in child.before.
+  - Default logfile is stdout. You can open a separate file and pass to functions
+    to log output to a file.
+  - Have to call child.close() to get exitstatus.
+"""
 import sys
 import pexpect
 
 
-def nav_register(passwd, kts, port, auth, orgname, clientname):
+def nav_register(passwd, kts, port, auth, orgname, clientname, logfile=sys.stdout):
     """ Register navencrypt host with the Key Trustee Server. Suports single passphrase only.
         passwd - Navencrypt password to set
         kts - Key Trustee Server IP/hostname
@@ -11,11 +23,15 @@ def nav_register(passwd, kts, port, auth, orgname, clientname):
         auth - Auth Secret on the Key Trustee Server
         orgname - Organization Name set on the Key Trustee Server
         clientname - Name for this Navencrypt client node
+        logfile - print output to logfile
     """
     cmd = 'navencrypt register --server=%s:%s --org=%s --auth=%s --clientname=%s '\
           '--skip-ssl-check' % (kts, port, orgname, auth, clientname)
     child = pexpect.spawn(cmd)
-    opts = ['Choose MASTER key type:', "Try `navencrypt register --help' for more information."]
+    child.logfile_read = logfile
+
+    opts = ['Choose MASTER key type:', "Try `navencrypt register --help' for more information.",
+            pexpect.EOF, pexpect.TIMEOUT]
     index = child.expect(opts)
 
     if index == 0:
@@ -25,13 +41,13 @@ def nav_register(passwd, kts, port, auth, orgname, clientname):
         child.expect('Verify MASTER passphrase:')
         child.sendline(passwd)
 
-        opts = ['navencrypt is now registered.', 'ERROR:']
+        opts = ['navencrypt is now registered.', 'ERROR:', pexpect.EOF, pexpect.TIMEOUT]
         index = child.expect(opts)
 
         # Returns True if Navencrypt registered successfully
         return index == 0
     else:
-        # If we're here, command line was incorrect
+        # If we're here, something went wrong, check logfile
         return False
 
 
@@ -48,13 +64,12 @@ def nav_prepare_loop(passwd, lfile, device, directory, logfile=sys.stdout):
     child = pexpect.spawn(cmd)
     child.logfile_read = logfile
 
-    opts = ['Type MASTER passphrase', pexpect.EOF, pexpect.TIMEOUT]
+    opts = ['Type MASTER passphrase:', pexpect.EOF, pexpect.TIMEOUT]
     index = child.expect(opts)
 
     if index == 0:
         child.sendline(passwd)
     else:
-        print 'ERROR'
         return False
 
     opts = [pexpect.EOF, pexpect.TIMEOUT]
@@ -69,6 +84,7 @@ def nav_prepare_loop(passwd, lfile, device, directory, logfile=sys.stdout):
 
 if __name__ == "__main__":
     # Testing functions
+
     if nav_prepare_loop('thisisatestpassword', '/dmcrypt/docker1-loop',
                         '/dev/loop0', '/docker1-mount'):
         print "nav_prepare_loop succeeded"
