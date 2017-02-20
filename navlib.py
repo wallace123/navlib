@@ -116,7 +116,7 @@ def nav_encrypt(passwd, category, directory, mount, logfile=sys.stdout):
 def nav_acl_add(passwd, rule, logfile=sys.stdout):
     """ Sets an ACL rule for the navencrypt mounted directory
         passwd - Navencrypt password
-        rule - The ACL rule to set (see documentation for valid rules
+        rule - The ACL rule to set (see documentation for valid rules)
         logfile - print pexpect output to logfile
     """
     cmd = 'navencrypt acl --add --rule="%s"' % rule
@@ -139,10 +139,70 @@ def nav_acl_add(passwd, rule, logfile=sys.stdout):
     return index == 0
 
 
+def nav_acl_del(passwd, rule, logfile=sys.stdout):
+    """ Deletes an ACL rule for the navencrypt mounted directory
+        passwd - Navencrypt password
+        rule - The ACL rule to search for from navencrypt acl --list
+        logfile - print pexpect output to logfile
+    """
+    # First have to get the rule number before deleting
+    cmd = 'navencrypt acl --list'
+
+    child = pexpect.spawn(cmd)
+    child.logfile_read = logfile
+
+    opts = ['Type MASTER passphrase:', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0:
+        child.sendline(passwd)
+    else:
+        return False
+
+    opts = [pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0:
+        output = child.before
+        rule_list = output.split('\r\n')
+        # Delete the first two items so list only contains rules
+        del rule_list[0:2]
+        # Delete the last item which is empty
+        del rule_list[-1]
+
+        # Parses through rule output to get the rule number
+        rule_num = 0
+        for aclrule in rule_list:
+            rule_items = aclrule.split()
+            match = ''
+            for item in rule_items[1:]:
+                match += item + ' '
+            if rule + ' ' == match:
+                rule_num = rule_items[0]
+
+        # Now ready to delete rule
+        cmd = 'navencrypt acl --del -n %s' % rule_num
+
+        child = pexpect.spawn(cmd)
+        child.logfile_read = logfile
+
+        opts = ['Type MASTER passphrase:', pexpect.EOF, pexpect.TIMEOUT]
+        index = child.expect(opts)
+
+        if index == 0:
+            child.sendline(passwd)
+        else:
+            return False
+
+        # pylint: disable=W1401
+        opts = ['1 rule\(s\) were deleted', pexpect.EOF, pexpect.TIMEOUT]
+        index = child.expect(opts)
+
+        return index == 0
+    else:
+        return False
+
+
 if __name__ == "__main__":
     # Testing functions
-    RULE = 'ALLOW @docker1-mount * /usr/bin/ls'
-    if nav_acl_add('thisisatestpassword', RULE):
-        print "nav_acl succeeded"
-    else:
-        print "nav_acl failed"
+    pass
