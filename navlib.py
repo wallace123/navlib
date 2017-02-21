@@ -57,7 +57,7 @@ def nav_prepare_loop(passwd, lfile, device, directory, logfile=sys.stdout):
     """ Prepares the encrypted volume backed by a loop device
         passwd - Navencrypt password
         lfile - File to use for loop device
-        device - loop device (i.e. /dev/loop0
+        device - loop device (i.e. /dev/loop0)
         directory - Encrypted directory mount point
         logfile - print pexpect output to logfile
     """
@@ -75,13 +75,60 @@ def nav_prepare_loop(passwd, lfile, device, directory, logfile=sys.stdout):
         return False
 
     opts = [pexpect.EOF, pexpect.TIMEOUT]
-    index = child.expect(opts)
+    child.expect(opts)
 
     child.close()
 
     # Relying on navencrypt-prepare exit status to indicate success.
     # Doing this because this command does a lot of setup and need to
     # ensure all the prep succeeds.
+    # Check logs if this succeeds but things don't seem right
+    return child.exitstatus == 0
+
+
+def nav_prepare_loop_del(passwd, device, logfile=sys.stdout):
+    """ Does a navencrypt-prepare -f <device> which forces undo of prepare
+        passwd - Navencrypt password
+        device - block device (i.e. /dev/loop0)
+        logfile - print pexpect output to logfile
+    """
+    cmd = 'navencrypt-prepare -f %s' % device
+
+    child = pexpect.spawn(cmd)
+    child.logfile_read = logfile
+
+    opts = ['WARNING:', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0:
+        child.sendline('yes')
+    else:
+        return False
+
+    opts = ['Are you sure to continue', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0:
+        child.sendline('yes')
+    else:
+        return False
+
+    opts = ['Type MASTER passphrase:', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0:
+        child.sendline(passwd)
+    else:
+        return False
+
+    opts = [pexpect.EOF, pexpect.TIMEOUT]
+    child.expect(opts)
+
+    child.close()
+
+    # Relying on navencrypt-prepare exit status to indicate success.
+    # Doing this because this command does multiple commands and need
+    # to ensure all the commands succeed.
     # Check logs if this succeeds but things don't seem right
     return child.exitstatus == 0
 
