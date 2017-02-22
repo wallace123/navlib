@@ -156,6 +156,7 @@ def nav_encrypt(passwd, category, directory, mount, logfile=sys.stdout):
 
     opts = ['Done.', pexpect.EOF, pexpect.TIMEOUT]
     index = child.expect(opts)
+    child.close()
 
     return index == 0
 
@@ -182,6 +183,7 @@ def nav_acl_add(passwd, rule, logfile=sys.stdout):
     # pylint: disable=W1401
     opts = ['1 rule\(s\) were added', pexpect.EOF, pexpect.TIMEOUT]
     index = child.expect(opts)
+    child.close()
 
     return index == 0
 
@@ -244,6 +246,7 @@ def nav_acl_del(passwd, rule, logfile=sys.stdout):
         # pylint: disable=W1401
         opts = ['1 rule\(s\) were deleted', pexpect.EOF, pexpect.TIMEOUT]
         index = child.expect(opts)
+        child.close()
 
         return index == 0
     else:
@@ -271,6 +274,7 @@ def nav_set_mode(passwd, mode, logfile=sys.stdout):
 
     opts = ['%s mode set' % mode, pexpect.EOF, pexpect.TIMEOUT]
     index = child.expect(opts)
+    child.close()
 
     return index == 0
 
