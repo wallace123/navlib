@@ -11,8 +11,10 @@ Tips with pexpect:
     to log output to a file.
   - Have to call child.close() to get exitstatus.
 """
+import os
 import sys
 import pexpect
+import time
 
 
 # pylint: disable=R0913
@@ -157,6 +159,16 @@ def nav_encrypt(passwd, category, directory, mount, logfile=sys.stdout):
     opts = ['Done.', pexpect.EOF, pexpect.TIMEOUT]
     index = child.expect(opts)
     child.close()
+
+    if child.exitstatus == 0:
+        # navencrypt-move is exiting but keeping lock file.
+        # delete lock file so we can run the move command again.
+        time.sleep(1)
+        if os.path.isfile('/var/run/navencrypt-move.lock'):
+            print 'deleting navencrypt-move.lock'
+            os.remove('/var/run/navencrypt-move.lock')
+    else:
+        return False
 
     return index == 0
 
