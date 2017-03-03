@@ -13,8 +13,8 @@ Tips with pexpect:
 """
 import os
 import sys
-import pexpect
 import time
+import pexpect
 
 
 # pylint: disable=R0913
@@ -53,6 +53,33 @@ def nav_register(passwd, kts, port, auth, orgname, clientname, logfile=sys.stdou
     else:
         # If we're here, something went wrong, check logfile
         return False
+
+
+def check_nav_password(passwd, logfile=sys.stdout):
+    """ Checks that the password given is the navencrypt password """
+    cmd = 'navencrypt acl --list'
+
+    child = pexpect.spawn(cmd)
+    child.logfile_read = logfile
+
+    opts = ['Type MASTER passphrase:', pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0:
+        child.sendline(passwd)
+    else:
+        return False
+
+    opts = ['You typed an incorrect key', '== Passphrase must be between 15',
+            pexpect.EOF, pexpect.TIMEOUT]
+    index = child.expect(opts)
+
+    if index == 0 or index == 1:
+        # Incorrect password
+        return False
+    else:
+        # Password correct
+        return True
 
 
 def nav_prepare_loop(passwd, lfile, device, directory, logfile=sys.stdout):
@@ -165,7 +192,6 @@ def nav_encrypt(passwd, category, directory, mount, logfile=sys.stdout):
         # delete lock file so we can run the move command again.
         time.sleep(1)
         if os.path.isfile('/var/run/navencrypt-move.lock'):
-            print 'deleting navencrypt-move.lock'
             os.remove('/var/run/navencrypt-move.lock')
     else:
         return False
