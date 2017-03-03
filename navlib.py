@@ -93,6 +93,7 @@ def nav_prepare_loop(passwd, lfile, device, directory, logfile=sys.stdout):
     cmd = 'navencrypt-prepare -d %s %s %s' % (lfile, device, directory)
 
     child = pexpect.spawn(cmd)
+    child.timeout = 60
     child.logfile_read = logfile
 
     opts = ['Type MASTER passphrase:', pexpect.EOF, pexpect.TIMEOUT]
