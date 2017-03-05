@@ -227,10 +227,10 @@ def nav_acl_add(passwd, rule, logfile=sys.stdout):
     return index == 0
 
 
-def nav_acl_del(passwd, rule, logfile=sys.stdout):
+def nav_acl_del(passwd, category, logfile=sys.stdout):
     """ Deletes an ACL rule for the navencrypt mounted directory
         passwd - Navencrypt password
-        rule - The ACL rule to search for from navencrypt acl --list
+        category - The category to search for from navencrypt acl --list
         logfile - print pexpect output to logfile
     """
     # First have to get the rule number before deleting
@@ -261,12 +261,8 @@ def nav_acl_del(passwd, rule, logfile=sys.stdout):
         # Parses through rule output to get the rule number
         rule_num = 0
         for aclrule in rule_list:
-            rule_items = aclrule.split()
-            match = ''
-            for item in rule_items[1:]:
-                match += item + ' '
-            if rule + ' ' == match:
-                rule_num = rule_items[0]
+            if category in aclrule:
+                rule_num = aclrule.split()[0]
 
         # Now ready to delete rule
         cmd = 'navencrypt acl --del -n %s' % rule_num
