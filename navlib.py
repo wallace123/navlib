@@ -14,6 +14,8 @@ Tips with pexpect:
 import os
 import sys
 import time
+import getpass
+import logging  # Set logfile in calling script
 import pexpect
 
 
@@ -55,7 +57,29 @@ def nav_register(passwd, kts, port, auth, orgname, clientname, logfile=sys.stdou
         return False
 
 
-def check_nav_password(passwd, logfile=sys.stdout):
+def set_nav_passwd():
+    """ Prompts user for Nav Admin password to be used
+        during nav commands. Optionally, can read from
+        environment variable to speed up deployments for
+        automated testing.
+    """
+    try:
+        passwd = os.environ['NAVPASS']
+        logging.info('Using environ password')
+    except KeyError:
+        passwd = getpass.getpass('Enter Navencrypt Admin password: ')
+        ver_passwd = getpass.getpass('Verify password: ')
+
+        if passwd != ver_passwd:
+            logging.error('Passwords do not match. Exiting...')
+            sys.exit(1)
+        else:
+            logging.info('Passwords match')
+
+    return passwd
+
+
+def check_nav_passwd(passwd, logfile=sys.stdout):
     """ Checks that the password given is the navencrypt password """
     cmd = 'navencrypt acl --list'
 
